@@ -1,4 +1,6 @@
-# serverless-api-cloudfront
+# aws-serverless-api-cloudfront
+
+## This package is based on serverless-api-cloudfront
 
 [![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
 [![npm version](https://badge.fury.io/js/serverless-api-cloudfront.svg)](https://badge.fury.io/js/serverless-api-cloudfront)

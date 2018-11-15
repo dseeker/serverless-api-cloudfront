@@ -15,7 +15,19 @@ class ServerlessApiCloudFrontPlugin {
     };
   }
 
+  initializeVariables() {
+    if (!this.initialized) {
+      const credentials = this.serverless.providers.aws.getCredentials();
+
+      this.acmRegion = this.serverless.providers.aws.getRegion();
+      const acmCredentials = Object.assign({}, credentials, { region: this.acmRegion });
+      this.acm = new this.serverless.providers.aws.sdk.ACM(acmCredentials);
+      this.initialized = true;
+    }
+  }
+
   createDeploymentArtifacts() {
+    this.initializeVariables();
     const baseResources = this.serverless.service.provider.compiledCloudFormationTemplate;
 
     const filename = path.resolve(__dirname, 'resources.yml');
@@ -29,8 +41,6 @@ class ServerlessApiCloudFrontPlugin {
   }
 
   printSummary() {
-    const cloudTemplate = this.serverless;
-
     const awsInfo = _.find(this.serverless.pluginManager.getPlugins(), (plugin) => {
       return plugin.constructor.name === 'AwsInfo';
     });
@@ -84,6 +94,7 @@ class ServerlessApiCloudFrontPlugin {
 
   prepareDomain(distributionConfig) {
     const domain = this.getConfig('domain', null);
+    this.configDomainName = domain;
 
     if (domain !== null) {
       distributionConfig.Aliases = Array.isArray(domain) ? domain : [ domain ];
@@ -136,13 +147,13 @@ class ServerlessApiCloudFrontPlugin {
   }
 
   prepareCertificate(distributionConfig) {
-    const certificate = this.getConfig('certificate', null);
-
-    if (certificate !== null) {
-      distributionConfig.ViewerCertificate.AcmCertificateArn = certificate;
-    } else {
-      delete distributionConfig.ViewerCertificate;
-    }
+    this.getCertArn().then(certArn => {
+      if (certArn !== null) {
+        distributionConfig.ViewerCertificate.AcmCertificateArn = certArn;
+      } else {
+        delete distributionConfig.ViewerCertificate;
+      }
+    });
   }
 
   prepareWaf(distributionConfig) {
@@ -161,6 +172,51 @@ class ServerlessApiCloudFrontPlugin {
 
   getConfig(field, defaultValue) {
     return _.get(this.serverless, `service.custom.apiCloudFront.${field}`, defaultValue)
+  }
+
+  /*
+   * Obtains the certification arn
+   */
+  getCertArn() {
+    let certArn = this.getConfig('certificate', null);
+    if(certArn && certArn.length > 0) {
+      this.serverless.cli.log(`Selected specific certificateArn ${certArn}`);
+      return Promise.resolve(certArn);
+    }
+
+    const certRequest = this.acm.listCertificates({ CertificateStatuses: ['PENDING_VALIDATION', 'ISSUED', 'INACTIVE'] }).promise();
+
+    return certRequest.catch((err) => {
+      throw Error(`Error: Could not list certificates in Certificate Manager.\n${err}`);
+    }).then((data) => {
+      // The more specific name will be the longest
+      let nameLength = 0;
+      const certificates = data.CertificateSummaryList;
+
+      // Derive certificate from domain name
+      certificateName = this.configDomainName;
+      certificates.forEach((certificate) => {
+        let certificateListName = certificate.DomainName;
+
+        // Looks for wild card and takes it out when checking
+        if (certificateListName[0] === '*') {
+          certificateListName = certificateListName.substr(1);
+        }
+
+        // Looks to see if the name in the list is within the given domain
+        // Also checks if the name is more specific than previous ones
+        if (certificateName.includes(certificateListName)
+          && certificateListName.length > nameLength) {
+          nameLength = certificateListName.length;
+          certArn = certificate.CertificateArn;
+        }
+      });
+
+      if (certArn == null) {
+        throw Error(`Error: Could not find the certificate ${certificateName}.`);
+      }
+      return certArn;
+    });
   }
 }
 
