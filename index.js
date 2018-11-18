@@ -22,6 +22,7 @@ class ServerlessApiCloudFrontPlugin {
       this.acmRegion = this.serverless.providers.aws.getRegion();
       const acmCredentials = Object.assign({}, credentials, { region: this.acmRegion });
       this.acm = new this.serverless.providers.aws.sdk.ACM(acmCredentials);
+      this.route53 = new this.serverless.providers.aws.sdk.Route53(credentials);
       this.initialized = true;
     }
   }
@@ -36,8 +37,10 @@ class ServerlessApiCloudFrontPlugin {
       filename: filename
     });
 
-    this.prepareResources(resources);
-    return _.merge(baseResources, resources);
+    return this.prepareResources(resources).then(() => {
+      _.merge(baseResources, resources);
+    })
+    
   }
 
   printSummary() {
@@ -66,24 +69,26 @@ class ServerlessApiCloudFrontPlugin {
 
   prepareResources(resources) {
     const distributionConfig = resources.Resources.ApiDistribution.Properties.DistributionConfig;
+    const dnsConfig = resources.Resources.CloudFrontDns.Properties;
 
+    this.prepareDomain(distributionConfig, dnsConfig);
     this.prepareLogging(distributionConfig);
-    this.prepareDomain(distributionConfig);
     this.preparePriceClass(distributionConfig);
     this.prepareOrigins(distributionConfig);
     this.prepareCookies(distributionConfig);
     this.prepareHeaders(distributionConfig);
     this.prepareQueryString(distributionConfig);
     this.prepareComment(distributionConfig);
-    this.prepareCertificate(distributionConfig);
     this.prepareWaf(distributionConfig);
     this.prepareCompress(distributionConfig);
+
+    return this.prepareCertificate(distributionConfig);
   }
 
   prepareLogging(distributionConfig) {
     const loggingBucket = this.getConfig('logging.bucket', null);
 
-    if (loggingBucket !== null) {
+    if (loggingBucket) {
       distributionConfig.Logging.Bucket = loggingBucket;
       distributionConfig.Logging.Prefix = this.getConfig('logging.prefix', '');
 
@@ -92,19 +97,20 @@ class ServerlessApiCloudFrontPlugin {
     }
   }
 
-  prepareDomain(distributionConfig) {
-    const domain = this.getConfig('domain', null);
-    this.configDomainName = domain;
-
-    if (domain !== null) {
-      distributionConfig.Aliases = Array.isArray(domain) ? domain : [ domain ];
-    } else {
-      delete distributionConfig.Aliases;
+  prepareDomain(distributionConfig, dnsConfig) {
+    const fullDomainName = this.getConfig('fullDomainName', null);
+    if(!fullDomainName) {
+      throw Error('Error: fullDomainName must be provided as a parameter');
     }
+    this.configHostName = fullDomainName.substr(fullDomainName.indexOf('.') + 1);
+    distributionConfig.Aliases = [ this.configHostName ];
+
+    dnsConfig.HostedZoneName = `${this.configHostName}.`
+    dnsConfig.RecordSets[0].Name = fullDomainName
   }
 
   preparePriceClass(distributionConfig) {
-    const priceClass = this.getConfig('priceClass', 'PriceClass_All');
+    const priceClass = this.getConfig('priceClass', 'PriceClass_100');
     distributionConfig.PriceClass = priceClass;
   }
 
@@ -143,12 +149,12 @@ class ServerlessApiCloudFrontPlugin {
 
   prepareComment(distributionConfig) {
     const name = this.serverless.getProvider('aws').naming.getApiGatewayName();
-    distributionConfig.Comment = `Serverless Managed ${name}`;
+    distributionConfig.Comment = `Serverless - ${name}`;
   }
 
   prepareCertificate(distributionConfig) {
-    this.getCertArn().then(certArn => {
-      if (certArn !== null) {
+    return this.getCertArn().then(certArn => {
+      if (certArn) {
         distributionConfig.ViewerCertificate.AcmCertificateArn = certArn;
       } else {
         delete distributionConfig.ViewerCertificate;
@@ -159,7 +165,7 @@ class ServerlessApiCloudFrontPlugin {
   prepareWaf(distributionConfig) {
     const waf = this.getConfig('waf', null);
 
-    if (waf !== null) {
+    if (waf) {
       distributionConfig.WebACLId = waf;
     } else {
       delete distributionConfig.WebACLId;
@@ -194,30 +200,61 @@ class ServerlessApiCloudFrontPlugin {
       const certificates = data.CertificateSummaryList;
 
       // Derive certificate from domain name
-      certificateName = this.configDomainName;
       certificates.forEach((certificate) => {
         let certificateListName = certificate.DomainName;
 
         // Looks for wild card and takes it out when checking
         if (certificateListName[0] === '*') {
-          certificateListName = certificateListName.substr(1);
+          certificateListName = certificateListName.substr(2);
         }
 
         // Looks to see if the name in the list is within the given domain
         // Also checks if the name is more specific than previous ones
-        if (certificateName.includes(certificateListName)
+        if (this.configHostName.includes(certificateListName)
           && certificateListName.length > nameLength) {
           nameLength = certificateListName.length;
           certArn = certificate.CertificateArn;
+
         }
       });
 
       if (certArn == null) {
-        throw Error(`Error: Could not find the certificate ${certificateName}.`);
+        throw Error(`Error: Could not find the certificate ${certificateName}`);
       }
+      this.serverless.cli.log(`The domain ${this.configHostName} resolved to the following certificateArn: ${certArn}`);
       return certArn;
     });
   }
+
+  upsertResourceRecordSet(domain) {
+    return this.getRoute53HostedZoneId().then((route53HostedZoneId) => {
+      if (!route53HostedZoneId) return null;
+
+      const params = {
+        ChangeBatch: {
+          Changes: [
+            {
+              Action: 'UPSERT',
+              ResourceRecordSet: {
+                Name: this.givenDomainName,
+                Type: 'A',
+                AliasTarget: {
+                  DNSName: domain.domainName,
+                  EvaluateTargetHealth: false,
+                  HostedZoneId: domain.hostedZoneId,
+                },
+              },
+            },
+          ],
+          Comment: 'Record created by serverless-domain-manager',
+        },
+        HostedZoneId: route53HostedZoneId,
+      };
+
+      return this.route53.changeResourceRecordSets(params).promise();
+    });
+  }
+
 }
 
 module.exports = ServerlessApiCloudFrontPlugin;

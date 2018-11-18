@@ -24,7 +24,7 @@ Resources:
         Comment: cdn for api gateway
         Aliases:
           - domain.tld
-        PriceClass: PriceClass_All
+        PriceClass: PriceClass_100
         DefaultCacheBehavior:
           AllowedMethods:
           - DELETE
@@ -50,11 +50,23 @@ Resources:
         ViewerCertificate:
           AcmCertificateArn: arn
           SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2018
         Logging:
           IncludeCookies: 'false'
           Bucket: ''
           Prefix: ''
         WebACLId: waf-id
+  CloudFrontDns:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: hostedZoneName
+      RecordSets:
+        - Name: fullDomainName
+          Type: A
+          AliasTarget:
+            HostedZoneId: Z2FDTNDATAQYW2
+            DNSName:
+              Fn::GetAtt: [ ApiDistribution, DomainName ]
 
 Outputs:
   ApiDistribution:
