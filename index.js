@@ -61,10 +61,8 @@ class ServerlessApiCloudFrontPlugin {
       return ;
     }
 
-    const cnameDomain = this.getConfig('domain', '-');
-
     this.serverless.cli.consoleLog(chalk.yellow('CloudFront domain name'));
-    this.serverless.cli.consoleLog(`  ${apiDistributionDomain.OutputValue} (CNAME: ${cnameDomain})`);
+    this.serverless.cli.consoleLog(`  ${apiDistributionDomain.OutputValue} (CNAME: ${this.fullDomainName})`);
   }
 
   prepareResources(resources) {
@@ -98,15 +96,15 @@ class ServerlessApiCloudFrontPlugin {
   }
 
   prepareDomain(distributionConfig, dnsConfig) {
-    const fullDomainName = this.getConfig('fullDomainName', null);
-    if(!fullDomainName) {
+    this.fullDomainName = this.getConfig('fullDomainName', null);
+    if(!this.fullDomainName) {
       throw Error('Error: fullDomainName must be provided as a parameter');
     }
-    this.configHostName = fullDomainName.substr(fullDomainName.indexOf('.') + 1);
-    distributionConfig.Aliases = [ this.configHostName ];
+    this.configHostName = this.fullDomainName.substr(this.fullDomainName.indexOf('.') + 1);
+    distributionConfig.Aliases = [ this.fullDomainName ];
 
     dnsConfig.HostedZoneName = `${this.configHostName}.`
-    dnsConfig.RecordSets[0].Name = fullDomainName
+    dnsConfig.RecordSets[0].Name = this.fullDomainName
   }
 
   preparePriceClass(distributionConfig) {
