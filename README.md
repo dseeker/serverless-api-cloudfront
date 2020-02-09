@@ -23,7 +23,7 @@ Due to limitations of API Gateway Custom Domains, we realized that setting self-
 ## Installation
 
 ```
-$ npm install --save-dev aws-serverless-api-cloudfront
+$ npm install --save-dev dseeker/serverless-api-cloudfront
 ```
 
 ## Configuration
@@ -67,11 +67,14 @@ cookies:
   - SecondCookieName
 ```
 
-* `headers` can be *all*, *none* (default) or a list:
+* [`headers`][headers-default-cache] can be *all*, *none* (default) or a list of headers ([see CloudFront custom behaviour][headers-list]):
 
 ```
 headers: all
 ```
+
+[headers-default-cache]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudfront-distribution-defaultcachebehavior.html#cfn-cloudfront-distribution-defaultcachebehavior-forwardedvalues
+[headers-list]: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/RequestAndResponseBehaviorCustomOrigin.html#request-custom-headers-behavior
 
 * `querystring` can be *all* (default), *none* or a list, in which case all querystring parameters are forwarded, but cache is based on the list:
 
@@ -86,5 +89,32 @@ querystring: all
 priceClass: PriceClass_100 is the default
 ```
 
-[price-class]: 
-https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_GetDistributionConfig.html#cloudfront-GetDistributionConfig-response-PriceClass
+[price-class]: https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_GetDistributionConfig.html#cloudfront-GetDistributionConfig-response-PriceClass
+
+
+* [`minimumProtocolVersion`][minimum-protocol-version] can be `TLSv1` (default), `TLSv1_2016`, `TLSv1.1_2016`, `TLSv1.2_2018` or `SSLv3`:
+
+```
+minimumProtocolVersion: TLSv1
+```
+
+[minimum-protocol-version]: https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_ViewerCertificate.html#cloudfront-Type-ViewerCertificate-MinimumProtocolVersion
+
+
+### IAM Policy
+
+In order to make this plugin work as expected a few additional IAM Policies might be needed on your AWS profile.
+
+More specifically this plugin needs the following policies attached:
+
+* `cloudfront:CreateDistribution`
+* `cloudfront:GetDistribution`
+* `cloudfront:UpdateDistribution`
+* `cloudfront:DeleteDistribution`
+* `cloudfront:TagResource`
+
+You can read more about IAM profiles and policies in the [Serverless documentation](https://serverless.com/framework/docs/providers/aws/guide/credentials#creating-aws-access-keys).
+
+## Error troubleshooting
+
+* Make sure you have at least one http event otherwise you'll get ```The CloudFormation template is invalid: Template format error: Unresolved resource dependencies [ApiGatewayRestApi] in the Resources block of the template```
