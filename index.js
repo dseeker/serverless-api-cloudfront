@@ -79,6 +79,7 @@ class ServerlessApiCloudFrontPlugin {
     this.prepareWaf(distributionConfig);
     this.prepareCompress(distributionConfig);
     this.prepareMinimumProtocolVersion(distributionConfig);
+    this.prepareTTL(distributionConfig);
 
     return this.prepareCertificate(distributionConfig);
   }
@@ -123,10 +124,10 @@ class ServerlessApiCloudFrontPlugin {
         distributionConfig.DefaultCacheBehavior.ForwardedValues.Cookies.WhitelistedNames = forwardCookies;
       }
   }
-  
+
   prepareHeaders(distributionConfig) {
       const forwardHeaders = this.getConfig('headers', 'none');
-      
+
       if (Array.isArray(forwardHeaders)) {
         distributionConfig.DefaultCacheBehavior.ForwardedValues.Headers = forwardHeaders;
       } else {
@@ -136,7 +137,7 @@ class ServerlessApiCloudFrontPlugin {
 
   prepareQueryString(distributionConfig) {
         const forwardQueryString = this.getConfig('querystring', 'all');
-        
+
         if (Array.isArray(forwardQueryString)) {
           distributionConfig.DefaultCacheBehavior.ForwardedValues.QueryString = true;
           distributionConfig.DefaultCacheBehavior.ForwardedValues.QueryStringCacheKeys = forwardQueryString;
@@ -169,7 +170,7 @@ class ServerlessApiCloudFrontPlugin {
       delete distributionConfig.WebACLId;
     }
   }
-  
+
   prepareCompress(distributionConfig) {
     distributionConfig.DefaultCacheBehavior.Compress = (this.getConfig('compress', false) === true) ? true : false;
   }
@@ -179,6 +180,11 @@ class ServerlessApiCloudFrontPlugin {
     if (minimumProtocolVersion) {
       distributionConfig.ViewerCertificate.MinimumProtocolVersion = minimumProtocolVersion;
     }
+  }
+
+  prepareTTL(distributionConfig) {
+    distributionConfig.DefaultCacheBehavior.DefaultTTL = this.getConfig('defaultTTL', '0');
+    distributionConfig.DefaultCacheBehavior.MinTTL = this.getConfig('minTTL', '0');
   }
 
   getConfig(field, defaultValue) {

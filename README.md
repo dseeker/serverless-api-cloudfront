@@ -56,6 +56,7 @@ custom:
       - page
       - per_page
     priceClass: PriceClass_100
+    defaultTTL: 3600
 ```
 
 ### Notes
@@ -100,6 +101,12 @@ minimumProtocolVersion: TLSv1
 
 [minimum-protocol-version]: https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_ViewerCertificate.html#cloudfront-Type-ViewerCertificate-MinimumProtocolVersion
 
+
+* [`defaultTTL`][default-ttl] '0' is default:
+
+```
+defaultTTL: '0'
+```
 
 ### IAM Policy
 
