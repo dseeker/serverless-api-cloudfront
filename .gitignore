@@ -1,5 +1,7 @@
 # package directories
+node_modules
 /node_modules/
+npm-debug.log
 jspm_packages
 build
 coverage
