@@ -40,7 +40,6 @@ class ServerlessApiCloudFrontPlugin {
     return this.prepareResources(resources).then(() => {
       _.merge(baseResources, resources);
     })
-    
   }
 
   printSummary() {
