@@ -102,7 +102,7 @@ class ServerlessApiCloudFrontPlugin {
       throw Error('Error: fullDomainName must be provided as a parameter');
     }
     if (Array.isArray(this.fullDomainName)) {
-      this.configHostName = this.fullDomainName[0].substr(this.fullDomainName.indexOf('.') + 1);
+      this.configHostName = this.fullDomainName[0].substr(this.fullDomainName[0].indexOf('.') + 1);
       distributionConfig.Aliases = this.fullDomainName;
 
       dnsConfig.HostedZoneName = `${this.configHostName}.`
