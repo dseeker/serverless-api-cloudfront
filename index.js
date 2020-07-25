@@ -80,6 +80,7 @@ class ServerlessApiCloudFrontPlugin {
     this.prepareCompress(distributionConfig);
     this.prepareMinimumProtocolVersion(distributionConfig);
     this.prepareTTL(distributionConfig);
+    this.prepareAssociations(distributionConfig);
 
     return this.prepareCertificate(distributionConfig);
   }
@@ -191,8 +192,17 @@ class ServerlessApiCloudFrontPlugin {
   }
 
   prepareTTL(distributionConfig) {
-    distributionConfig.DefaultCacheBehavior.DefaultTTL = this.getConfig('defaultTTL', '0');
-    distributionConfig.DefaultCacheBehavior.MinTTL = this.getConfig('minTTL', '0');
+    const defaultTTL = this.getConfig('defaultTTL', undefined)
+    const minTTL = this.getConfig('minTTL', undefined)
+    const maxTTL = this.getConfig('maxTTL', undefined)
+    if (defaultTTL) distributionConfig.DefaultCacheBehavior.DefaultTTL = this.getConfig('defaultTTL', '0');
+    if (minTTL) distributionConfig.DefaultCacheBehavior.MinTTL = this.getConfig('minTTL', '0');
+    if (maxTTL) distributionConfig.DefaultCacheBehavior.MaxTTL = this.getConfig('maxTTL', `${3*24*60*60}`);
+  }
+
+  prepareAssociations(distributionConfig) {
+    const functionAssociations = this.getConfig('functionAssociations', undefined)
+    if (functionAssociations) distributionConfig.DefaultCacheBehavior.LambdaFunctionAssociations = functionAssociations;
   }
 
   getConfig(field, defaultValue) {

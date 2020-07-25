@@ -108,6 +108,14 @@ minimumProtocolVersion: TLSv1
 defaultTTL: '0'
 ```
 
+* [`functionAssociations`][function-associations] not configured by defailt
+
+```
+functionAssociations:
+  - EventType: viewer-request
+    LambdaFunctionARN: arn:aws:lambda:us-east-1:****:function:****
+```
+
 ### IAM Policy
 
 In order to make this plugin work as expected a few additional IAM Policies might be needed on your AWS profile.
