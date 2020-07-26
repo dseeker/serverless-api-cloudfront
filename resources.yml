@@ -42,9 +42,6 @@ Resources:
             Headers: []
             Cookies:
               Forward: all
-          MinTTL: '0'
-          MaxTTL: '31536000'
-          DefaultTTL: '0'
           TargetOriginId: ApiGateway
           ViewerProtocolPolicy: redirect-to-https
         CustomErrorResponses: []

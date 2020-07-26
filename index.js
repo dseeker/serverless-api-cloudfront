@@ -195,9 +195,9 @@ class ServerlessApiCloudFrontPlugin {
     const defaultTTL = this.getConfig('defaultTTL', undefined)
     const minTTL = this.getConfig('minTTL', undefined)
     const maxTTL = this.getConfig('maxTTL', undefined)
-    if (defaultTTL) distributionConfig.DefaultCacheBehavior.DefaultTTL = this.getConfig('defaultTTL', '0');
+    if (defaultTTL) distributionConfig.DefaultCacheBehavior.DefaultTTL = this.getConfig('defaultTTL', '86400');
     if (minTTL) distributionConfig.DefaultCacheBehavior.MinTTL = this.getConfig('minTTL', '0');
-    if (maxTTL) distributionConfig.DefaultCacheBehavior.MaxTTL = this.getConfig('maxTTL', `${3*24*60*60}`);
+    if (maxTTL) distributionConfig.DefaultCacheBehavior.MaxTTL = this.getConfig('maxTTL', '31536000');
   }
 
   prepareAssociations(distributionConfig) {
