@@ -21,7 +21,8 @@ class ServerlessApiCloudFrontPlugin {
 
       this.acmRegion = this.serverless.providers.aws.getRegion();
       const acmCredentials = Object.assign({}, credentials, { region: this.acmRegion });
-      this.acm = new this.serverless.providers.aws.sdk.ACM(acmCredentials);
+      console.log('-> initializeVariables aws', this.serverless.providers.aws)
+      if (new this.serverless.providers.aws.sdk.ACM) this.acm = new this.serverless.providers.aws.sdk.ACM(acmCredentials);
       this.route53 = new this.serverless.providers.aws.sdk.Route53(credentials);
       this.initialized = true;
     }
